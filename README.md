@@ -1,253 +1,155 @@
-#  FlowDesk
+# FlowDesk: AI Customer Support for a Food-Delivery Platform
 
-An intelligent, multi-agent customer support platform built with **LangGraph**, **hybrid RAG retrieval**, and **multi-model routing** (Groq Llama 3 + Google Gemini). FlowDesk automatically classifies customer intent, retrieves relevant documentation, generates grounded answers with confidence scoring, and seamlessly escalates to human agents when necessary.
+A support system for a delivery app, run by a small team of AI agents. It answers questions from help documents, takes real actions like cancelling orders and issuing refunds (under safety rules), and messages customers on its own when a delivery is delayed.
+
+> **Credit:** This project is built on the open-source [FlowDesk](https://github.com/tonystalker/FlowDesk) by tonystalker. The original provides the multi-agent support core (router, hybrid RAG, escalation). See "What I added" below for my work on top of it.
 
 ---
+
+## What it does
+
+- **Answers questions** like "What is your refund policy?" by searching the help documents and writing a grounded answer.
+- **Takes actions** like checking an order, cancelling it, or issuing a refund by calling real order and refund APIs.
+- **Stays safe.** Refunds are limited by guardrails. Large or risky cases go to a human.
+- **Reaches out first.** If a delivery is delayed, the system messages the customer with an update without being asked.
+
+## How it works (simple version)
+
+| Part | What it does |
+|---|---|
+| **Customer chat (Next.js)** | Where the customer types their question |
+| **FlowDesk API** | Receives the message and passes it to the AI team |
+| **Router agent** | Reads the message and decides who handles it |
+| **RAG agent** | Looks up help documents and writes the answer |
+| **Action agent** | Calls the order and refund services, with safety rules |
+| **Escalation agent** | Hands the case to a human when needed |
+| **Order service** | Tracks every order and its stage |
+| **Refund service** | Handles money-back requests |
+| **Kafka** | A shared notice board where services post events like "order shipped" |
+| **Delivery simulator** | Pretends to be riders and sometimes creates delays for testing |
+| **PostgreSQL** | Stores orders, refunds, and a log of every conversation |
 
 ## Architecture
 
 ```mermaid
 graph TB
-    %% External Users
-    Customer((Customer)):::external
-    SupportAgent((Support Agent)):::external
+    Customer((Customer)) --> Frontend["Next.js Frontend"]
+    Frontend --> API["FlowDesk API"]
 
-    %% Frontend
-    Frontend[Next.js Frontend]:::frontend
-
-    %% FlowDesk API
-    FlowDeskAPI[FlowDesk API<br/>FastAPI]:::api
-
-    %% Orchestrator
-    subgraph FlowDesk[FlowDesk Support Agent]
-        Router[Router Agent<br/>Groq Llama 3.3]:::agent
-        RAG[RAG Agent<br/>Hybrid RAG + Reranking]:::agent
-        Action[Action Agent<br/>Real API + Guardrails]:::agent
-        Escalation[Escalation Agent<br/>Human Handoff]:::agent
+    subgraph Agents["FlowDesk Support Agents"]
+        Router["Router"]
+        RAG["RAG Agent"]
+        Action["Action Agent"]
+        Escalation["Escalation Agent"]
     end
 
-    %% Order Service
-    subgraph OrderSvc[Order Service]
-        OrderAPI[Order API<br/>FastAPI]:::api
-        OrderSM[Order State Machine<br/>created→paid→processing→shipped→delivered→cancelled]:::db
-        OrderDB[(PostgreSQL<br/>order_service)]:::db
-    end
-
-    %% Refund Service
-    subgraph RefundSvc[Refund Service]
-        RefundAPI[Refund API<br/>FastAPI]:::api
-        RefundSM[Refund State Machine<br/>requested→approved→processing→completed/failed]:::db
-        RefundDB[(PostgreSQL<br/>refund_service)]:::db
-    end
-
-    %% Delivery Simulator
-    DeliverySim[Delivery Simulator<br/>Kafka Consumer + Emitter]:::sim
-
-    %% Kafka
-    Kafka[(Kafka<br/>Event Bus)]:::kafka
-
-    %% FlowDesk DB
-    FlowDeskDB[(PostgreSQL<br/>flowdesk<br/>telemetry + feedback)]:::db
-
-    %% Connections
-    Customer -->|Query| Frontend
-    Frontend -->|SSE / REST| FlowDeskAPI
-    FlowDeskAPI --> Router
-    Router -->|faq| RAG
+    API --> Router
+    Router -->|question| RAG
     Router -->|action| Action
     Router -->|complex| Escalation
-    Router -->|proactive_delay| Action
-    RAG --> FlowDeskDB
-    Action --> FlowDeskDB
-    Escalation --> FlowDeskDB
 
-    %% Action Agent → Order/Refund APIs
-    Action -->|HTTP REST| OrderAPI
-    Action -->|HTTP REST| RefundAPI
+    Action -->|REST| Orders["Order Service"]
+    Action -->|REST| Refunds["Refund Service"]
 
-    %% Order Service → Kafka
-    OrderAPI -->|emit order.events| Kafka
-    OrderSM --> OrderDB
-
-    %% Refund Service → Kafka
-    RefundAPI -->|emit refund.events| Kafka
-    RefundSM --> RefundDB
-
-    %% Kafka → Delivery Simulator
-    Kafka -->|order.events<br/>(shipped)| DeliverySim
-
-    %% Delivery Simulator → Kafka
-    DeliverySim -->|delivery.events<br/>(delayed, delivered)| Kafka
-
-    %% Kafka → FlowDesk (proactive delay)
-    Kafka -->|delivery.events<br/>(delayed)| FlowDeskAPI
-    FlowDeskAPI -->|proactive notification| Customer
-
-    %% Classes
-    classDef external fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef frontend fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef api fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    classDef agent fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef db fill:#ffebee,stroke:#b71c1c,stroke-width:2px
-    classDef kafka fill:#fff8e1,stroke:#f57f17,stroke-width:2px
-    classDef sim fill:#e0f2f1,stroke:#004d40,stroke-width:2px
+    Orders -->|order events| Kafka[("Kafka")]
+    Refunds -->|refund events| Kafka
+    Kafka --> Sim["Delivery Simulator"]
+    Sim -->|delivery events| Kafka
+    Kafka -->|order delayed| API
+    API -->|proactive message| Customer
 ```
 
-### Data Flow
+## Example flows
 
-1. **Customer** submits a query via the Next.js frontend
-2. **FlowDesk API** receives the request and invokes the LangGraph orchestrator
-3. **Router Agent** classifies intent (faq / action / complex / proactive_delay)
-4. **Action Agent** calls real Order/Refund APIs via HTTP with refund guardrails
-5. **Order Service** emits state change events to Kafka (`order.events`)
-6. **Delivery Simulator** consumes `order.events` (shipped orders), simulates delivery with possible delays, and emits `delivery.events` to Kafka
-7. **FlowDesk API** consumes `delivery.events` (delayed) and proactively notifies the customer
-8. All interactions are logged to PostgreSQL for telemetry and feedback
+1. **Policy question:** "What's your refund policy?" The router sends it to the RAG agent, which finds the policy and answers.
+2. **Action request:** "Cancel my order and refund me." The router sends it to the action agent. The guardrails check the amount, and then it calls the order and refund services. A large refund goes to a human instead.
+3. **Proactive update:** The delivery simulator reports a delay on Kafka. FlowDesk sees it and messages the customer with the new time and any compensation the policy allows.
 
+## What I added
 
-## Key Features
+On top of the original FlowDesk, I added:
 
-- **Hybrid Retrieval Pipeline**: Combines dense semantic search (Gemini embeddings) with sparse keyword search (BM25) using Reciprocal Rank Fusion (RRF), followed by Cross-Encoder reranking for high precision.
-- **Dynamic Model Routing**: Routes latency-sensitive or simple queries to Groq (Llama 3.3), while reserving Gemini for complex reasoning and conversational retries.
-- **LLMOps & Telemetry**: Every interaction is logged to a PostgreSQL database, tracking confidence scores, groundedness metrics, and explicit user feedback (thumbs up/down) for continuous improvement.
-- **Graceful Degradation**: Built-in fallbacks ensure the system remains operational (e.g., seamlessly dropping to sparse-only search if the embedding API is unreachable).
+- Order service and refund service, each with its own state machine and database
+- Kafka event flow between the services
+- Delivery simulator that produces shipped, delayed and delivered events
+- Action agent connected to the real order and refund APIs, with refund guardrails
+- Proactive delay notifications driven by Kafka events
 
-## Tech Stack
+## Key features
 
-- **Orchestration**: LangGraph (StateGraph with conditional edges + self-correction)
-- **LLMs**: Groq (Llama 3.3 70B) & Google Gemini (3.5 Flash / 2.5 Pro)
-- **Embeddings**: Google `models/gemini-embedding-2`
-- **Vector Database**: Pinecone (Serverless)
-- **Reranking**: Sentence Transformers (`cross-encoder/ms-marco-MiniLM-L-6-v2`)
-- **Database**: PostgreSQL (Supabase) / SQLite (Local Dev)
-- **API**: FastAPI + Uvicorn + Server-Sent Events (SSE) Streaming
-- **UI**: Next.js (App Router) Demo Frontend + Tailwind CSS
-- **CI/CD**: GitHub Actions → Google Cloud Run (Backend) & Vercel (Frontend)
+- **Hybrid search:** combines meaning-based search with keyword search, then re-ranks the results for better accuracy.
+- **Smart model routing:** quick, simple queries go to a fast model (Groq Llama 3.3), and harder or retried ones go to Gemini.
+- **Confidence checks:** if the answer looks unreliable, the agent retries with a wider search and a stronger model.
+- **Logging and feedback:** every interaction is stored, along with confidence scores and thumbs up/down feedback.
+- **Fallbacks:** if the embedding service is down, search falls back to keyword-only so the system keeps working.
 
----
+## Tech stack
 
-## Quick Start
+- **Agents:** LangGraph
+- **Models:** Groq (Llama 3.3 70B), Google Gemini
+- **Search:** Pinecone, BM25, Sentence Transformers cross-encoder
+- **Backend:** FastAPI, PostgreSQL, Kafka
+- **Frontend:** Next.js, Tailwind CSS
+- **CI/CD:** GitHub Actions, Google Cloud Run, Vercel
 
-### Prerequisites
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) package manager
-- Node.js 18+ (for the frontend)
+## Getting started
 
-### 1. Clone & Install
-**Backend:**
+**Requirements:** Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js 18+
+
 ```bash
-git clone https://github.com/Cephasgokula/Customer-Agent.git
-cd Customer-Agent
+# 1. Clone and install
+git clone https://github.com/<your-username>/<your-repo>.git
+cd <your-repo>
 uv sync
-```
+cd flowdesk-demo && npm install && cd ..
 
-**Frontend:**
-```bash
-cd flowdesk-demo
-npm install
-```
-
-### 2. Configure Environment
-```bash
-# Backend (.env)
+# 2. Configure
 cp .env.example .env
-# Edit .env with your API keys:
-#   GEMINI_API_KEY, GROQ_API_KEY, PINECONE_API_KEY, PINECONE_ENV, DATABASE_URL
-
-# Frontend (flowdesk-demo/.env.local)
+# Add: GEMINI_API_KEY, GROQ_API_KEY, PINECONE_API_KEY, PINECONE_ENV, DATABASE_URL
 echo "BACKEND_URL=http://127.0.0.1:8000" > flowdesk-demo/.env.local
-```
 
-### 3. Run Database Migrations
-```bash
+# 3. Set up the database and load the help documents
 uv run alembic upgrade head
-```
-
-### 4. Ingest Support Documents
-```bash
 uv run python -m retrieval.ingest
-```
 
-### 5. Launch the App
-**Start the REST API (Backend):**
-```bash
+# 4. Start Kafka, the order and refund services, and the delivery simulator
+# <add your start command here, e.g. docker compose up>
+
+# 5. Start the backend and the frontend
 uv run uvicorn gateway.main:app --reload
-# Available at http://localhost:8000
+cd flowdesk-demo && npm run dev
 ```
 
-**Start the Next.js UI (Frontend):**
-```bash
-cd flowdesk-demo
-npm run dev
-# Opens at http://localhost:3000
-```
+The app runs at http://localhost:3000 and the API at http://localhost:8000.
 
-### Full Local Stack with Docker Compose
-
-To run PostgreSQL, Kafka, the order and refund services, the delivery simulator,
-the FlowDesk API, and the frontend together:
+## Testing
 
 ```bash
-docker compose up --build
+uv run pytest -v                          # run the tests
+uv run ruff check .                       # check code style
+uv run python -m evaluation.eval_harness  # measure search quality
 ```
 
-The services are available at:
+## Project structure
 
-- Frontend: `http://localhost:3000`
-- FlowDesk API: `http://localhost:8000`
-- Order service: `http://localhost:8001`
-- Refund service: `http://localhost:8002`
-
----
-
-## Testing & Evaluation
-
-The platform includes a comprehensive test suite and evaluation harness to benchmark retrieval accuracy and agent reliability.
-
-```bash
-# Run the test suite (50+ tests)
-uv run pytest -v
-
-# Run the linter
-uv run ruff check .
-
-# Run the evaluation harness for retrieval metrics
-uv run python -m evaluation.eval_harness
-```
-
----
-
-## Project Structure
 ```text
-FlowDesk/
-├── gateway/              # FastAPI gateway and streaming endpoints
-├── orchestrator/         # LangGraph multi-agent system & state
-│   └── agents/           # Router, RAG, Action, and Escalation agents
-├── retrieval/            # Hybrid RAG pipeline (Ingest, Dense/Sparse, Reranking)
-├── evaluation/           # Benchmarking & confidence scoring
-├── db/                   # SQLAlchemy models & Alembic migrations
-├── order_service/        # Order API, state machine, and Kafka events
-├── refund_service/       # Refund API, state machine, and Kafka events
-├── delivery_simulator/   # Kafka consumer that simulates delivery updates
-├── docs/                 # Support knowledge base documents
-├── tests/                # Pytest suite
-├── docker-compose.yml    # Full local multi-service environment
-├── Dockerfile            # Multi-stage production build
-├── .github/workflows/    # CI/CD pipeline
-└── config.py             # Centralized environment configuration
+├── gateway/        # FastAPI backend
+├── orchestrator/   # LangGraph agents (router, RAG, action, escalation)
+├── retrieval/      # Hybrid search: ingest, dense + keyword, re-ranking
+├── evaluation/     # Quality measurement
+├── db/             # Database models and migrations
+├── docs/           # Help documents the agents search
+├── tests/          # Test suite
+├── flowdesk-demo/  # Next.js frontend
+└── .github/        # CI/CD pipeline
 ```
-
----
 
 ## Deployment
 
-The FlowDesk API is configured to deploy automatically to **Google Cloud Run** via GitHub Actions on every push to the `main` branch.
+Every push to `main` runs the linter and tests, builds the Docker image, and deploys to Google Cloud Run through GitHub Actions.
 
-The CI pipeline automatically:
-1. Lints the codebase with `ruff`
-2. Runs the full `pytest` suite
-3. Builds the Docker container
-4. Deploys to Cloud Run
+Required GitHub secrets: `GCP_SA_KEY`, `PROJECT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `PINECONE_API_KEY`, `PINECONE_ENV`, `DATABASE_URL`.
 
-*Required GitHub Secrets:* `GCP_SA_KEY`, `PROJECT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `PINECONE_API_KEY`, `PINECONE_ENV`, `DATABASE_URL`
-`COHERE_API_KEY` is also required for the configured reranking integration.
+## Credits
+
+Core support agent: [tonystalker/FlowDesk](https://github.com/tonystalker/FlowDesk).
