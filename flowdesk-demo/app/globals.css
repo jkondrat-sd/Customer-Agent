@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface-base: #F6F4EF;
+  --surface-glass: rgba(255, 255, 255, 0.55);
+  --ink: #1F1D1A;
+  --ink-muted: #6B675F;
+  --accent-lavender: #A9A0E8;
+  --accent-clay: #E8B4A0;
+  --border-hairline: rgba(31, 29, 26, 0.08);
+}
+
+body {
+  background-color: var(--surface-base);
+  color: var(--ink);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

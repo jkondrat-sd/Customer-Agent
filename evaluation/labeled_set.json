@@ -1,0 +1,152 @@
+[
+  {
+    "question": "How long do I have to return a product?",
+    "expected_doc_ids": ["return_refund_policy.md"],
+    "expected_keywords": ["30 days", "return window"]
+  },
+  {
+    "question": "Can I return a promotional item?",
+    "expected_doc_ids": ["return_refund_policy.md"],
+    "expected_keywords": ["promotional", "15 days"]
+  },
+  {
+    "question": "How long does it take to get a refund?",
+    "expected_doc_ids": ["return_refund_policy.md"],
+    "expected_keywords": ["5-7 business days", "refund"]
+  },
+  {
+    "question": "What shipping options are available?",
+    "expected_doc_ids": ["shipping_delivery.md"],
+    "expected_keywords": ["standard", "express", "overnight"]
+  },
+  {
+    "question": "How do I track my order?",
+    "expected_doc_ids": ["shipping_delivery.md"],
+    "expected_keywords": ["tracking number", "Order History"]
+  },
+  {
+    "question": "My package shows delivered but I didn't receive it",
+    "expected_doc_ids": ["shipping_delivery.md"],
+    "expected_keywords": ["48 hours", "neighbors", "building management"]
+  },
+  {
+    "question": "How do I create a FlowDesk account?",
+    "expected_doc_ids": ["account_management.md"],
+    "expected_keywords": ["signup", "business email", "verify"]
+  },
+  {
+    "question": "What are the different user roles?",
+    "expected_doc_ids": ["account_management.md"],
+    "expected_keywords": ["Admin", "Agent", "Viewer"]
+  },
+  {
+    "question": "How do I set up SSO?",
+    "expected_doc_ids": ["account_management.md"],
+    "expected_keywords": ["SAML 2.0", "IdP metadata", "Okta"]
+  },
+  {
+    "question": "I forgot my password, how do I reset it?",
+    "expected_doc_ids": ["password_security.md"],
+    "expected_keywords": ["Forgot Password", "reset link", "1 hour"]
+  },
+  {
+    "question": "How do I enable two-factor authentication?",
+    "expected_doc_ids": ["password_security.md"],
+    "expected_keywords": ["2FA", "authenticator app", "QR code"]
+  },
+  {
+    "question": "What payment methods do you accept?",
+    "expected_doc_ids": ["billing_payments.md"],
+    "expected_keywords": ["Visa", "Mastercard", "PayPal", "ACH"]
+  },
+  {
+    "question": "What happens if my payment fails?",
+    "expected_doc_ids": ["billing_payments.md"],
+    "expected_keywords": ["7-day grace period", "read-only", "30 days"]
+  },
+  {
+    "question": "What does the product warranty cover?",
+    "expected_doc_ids": ["product_warranty.md"],
+    "expected_keywords": ["2-year", "manufacturing defects"]
+  },
+  {
+    "question": "How do I file a warranty claim?",
+    "expected_doc_ids": ["product_warranty.md"],
+    "expected_keywords": ["serial number", "prepaid shipping label"]
+  },
+  {
+    "question": "The mobile app keeps crashing, what should I do?",
+    "expected_doc_ids": ["troubleshooting_mobile.md"],
+    "expected_keywords": ["force close", "clear cache", "reinstall"]
+  },
+  {
+    "question": "Push notifications are not working on my iPhone",
+    "expected_doc_ids": ["troubleshooting_mobile.md"],
+    "expected_keywords": ["Allow Notifications", "Do Not Disturb", "iOS"]
+  },
+  {
+    "question": "FlowDesk desktop app won't start on my Mac",
+    "expected_doc_ids": ["troubleshooting_desktop.md"],
+    "expected_keywords": ["Activity Monitor", "cache", "macOS"]
+  },
+  {
+    "question": "What are the keyboard shortcuts for the desktop app?",
+    "expected_doc_ids": ["troubleshooting_desktop.md"],
+    "expected_keywords": ["Ctrl+N", "Cmd+K", "shortcuts"]
+  },
+  {
+    "question": "What is the difference between Starter and Professional plans?",
+    "expected_doc_ids": ["subscription_plans.md"],
+    "expected_keywords": ["$29", "$79", "Professional", "Starter"]
+  },
+  {
+    "question": "Do you offer annual billing discounts?",
+    "expected_doc_ids": ["subscription_plans.md"],
+    "expected_keywords": ["20% discount", "annual billing"]
+  },
+  {
+    "question": "How do I escalate a support issue?",
+    "expected_doc_ids": ["contact_escalation.md"],
+    "expected_keywords": ["Level 2", "escalation", "please escalate"]
+  },
+  {
+    "question": "What are the support priority levels?",
+    "expected_doc_ids": ["contact_escalation.md"],
+    "expected_keywords": ["P1", "P2", "15 minutes", "Critical"]
+  },
+  {
+    "question": "Is my data encrypted?",
+    "expected_doc_ids": ["data_privacy_gdpr.md"],
+    "expected_keywords": ["AES-256", "TLS 1.3", "encrypted"]
+  },
+  {
+    "question": "How do I request deletion of my personal data?",
+    "expected_doc_ids": ["data_privacy_gdpr.md"],
+    "expected_keywords": ["Right to be Forgotten", "privacy@flowdesk.com", "30 days"]
+  },
+  {
+    "question": "What is the API rate limit?",
+    "expected_doc_ids": ["api_integration.md"],
+    "expected_keywords": ["100 requests/minute", "429", "rate limit"]
+  },
+  {
+    "question": "How do I generate an API key?",
+    "expected_doc_ids": ["api_integration.md"],
+    "expected_keywords": ["Settings", "Integrations", "API Keys", "Generate"]
+  },
+  {
+    "question": "What operating systems does the desktop app support?",
+    "expected_doc_ids": ["system_requirements.md"],
+    "expected_keywords": ["Windows 10", "macOS 12", "Ubuntu 22.04"]
+  },
+  {
+    "question": "What is the uptime SLA guarantee?",
+    "expected_doc_ids": ["sla.md"],
+    "expected_keywords": ["99.9%", "99.99%", "Enterprise"]
+  },
+  {
+    "question": "How do I get service credits for downtime?",
+    "expected_doc_ids": ["sla.md"],
+    "expected_keywords": ["service credits", "sla@flowdesk.com", "30 days"]
+  }
+]

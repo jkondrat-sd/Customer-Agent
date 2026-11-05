@@ -1,0 +1,26 @@
+# Dependencies / build artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.ruff_cache/
+
+# Secrets — never bake into image
+.env
+
+# Dev/test tooling
+.pytest_cache/
+tests/
+evaluation/labeled_set.json
+
+# Local SQLite databases (ephemeral, not needed in container)
+*.db
+*.db-shm
+*.db-wal
+
+# Version control
+.git/
+.github/
+
+# Note: bm25_index.pkl is intentionally NOT excluded — it is required at
+# runtime for the sparse (BM25) retrieval path.

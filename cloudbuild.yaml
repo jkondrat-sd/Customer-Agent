@@ -1,0 +1,17 @@
+options:
+  machineType: 'E2_HIGHCPU_8'
+timeout: '1800s'
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    env:
+      - 'DOCKER_BUILDKIT=1'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/support-gateway:latest'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/support-gateway:latest']
+
+images:
+  - 'gcr.io/$PROJECT_ID/support-gateway:latest'

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# Environment
+.env
+
+# BM25 index (generated artifact)
+# bm25_index.pkl removed from gitignore because Cloud Run needs it
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Pytest
+.pytest_cache/
+
+# Planning docs (not part of the codebase)
+skill.md
+build_guide.md
+implemantation_plan.md
+CHANGELOG.md
+
+# Local Databases
+*.db
+*.db-shm
+*.db-wal
