@@ -6,8 +6,6 @@ An intelligent, multi-agent customer support platform built with **LangGraph**, 
 
 ## Architecture
 
-## Architecture
-
 ```mermaid
 graph TB
     %% External Users
@@ -138,8 +136,8 @@ graph TB
 ### 1. Clone & Install
 **Backend:**
 ```bash
-git clone https://github.com/tonystalker/FlowDesk.git
-cd FlowDesk
+git clone https://github.com/Cephasgokula/Customer-Agent.git
+cd Customer-Agent
 uv sync
 ```
 
@@ -184,6 +182,22 @@ npm run dev
 # Opens at http://localhost:3000
 ```
 
+### Full Local Stack with Docker Compose
+
+To run PostgreSQL, Kafka, the order and refund services, the delivery simulator,
+the FlowDesk API, and the frontend together:
+
+```bash
+docker compose up --build
+```
+
+The services are available at:
+
+- Frontend: `http://localhost:3000`
+- FlowDesk API: `http://localhost:8000`
+- Order service: `http://localhost:8001`
+- Refund service: `http://localhost:8002`
+
 ---
 
 ## Testing & Evaluation
@@ -206,14 +220,18 @@ uv run python -m evaluation.eval_harness
 ## Project Structure
 ```text
 FlowDesk/
-├── gateway/              # FastAPI + Gradio UI
+├── gateway/              # FastAPI gateway and streaming endpoints
 ├── orchestrator/         # LangGraph multi-agent system & state
 │   └── agents/           # Router, RAG, Action, and Escalation agents
 ├── retrieval/            # Hybrid RAG pipeline (Ingest, Dense/Sparse, Reranking)
 ├── evaluation/           # Benchmarking & confidence scoring
 ├── db/                   # SQLAlchemy models & Alembic migrations
+├── order_service/        # Order API, state machine, and Kafka events
+├── refund_service/       # Refund API, state machine, and Kafka events
+├── delivery_simulator/   # Kafka consumer that simulates delivery updates
 ├── docs/                 # Support knowledge base documents
 ├── tests/                # Pytest suite
+├── docker-compose.yml    # Full local multi-service environment
 ├── Dockerfile            # Multi-stage production build
 ├── .github/workflows/    # CI/CD pipeline
 └── config.py             # Centralized environment configuration
@@ -223,7 +241,7 @@ FlowDesk/
 
 ## Deployment
 
-The project is configured to deploy automatically to **Google Cloud Run** via GitHub Actions on every push to the `main` branch. 
+The FlowDesk API is configured to deploy automatically to **Google Cloud Run** via GitHub Actions on every push to the `main` branch.
 
 The CI pipeline automatically:
 1. Lints the codebase with `ruff`
@@ -232,3 +250,4 @@ The CI pipeline automatically:
 4. Deploys to Cloud Run
 
 *Required GitHub Secrets:* `GCP_SA_KEY`, `PROJECT_ID`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `PINECONE_API_KEY`, `PINECONE_ENV`, `DATABASE_URL`
+`COHERE_API_KEY` is also required for the configured reranking integration.
